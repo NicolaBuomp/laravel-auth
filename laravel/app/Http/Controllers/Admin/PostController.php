@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use App\Post;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use App\Mail\NewPost;
+use Illuminate\Support\Facades\Mail;
 
 class PostController extends Controller
 {
@@ -46,12 +49,18 @@ class PostController extends Controller
         $data['user_id'] = Auth::id();
         $data['slug'] = Str::slug($data[ 'title' ], '-');
 
+        if(!empty($data['path_img'])) {
+            $data[ 'path_img' ] = Storage::disk('public')->put('images', $data['path_img']);
+        }
+
         $newPost = new Post();
         $newPost->fill($data);
 
         $saved=$newPost->save();
 
         if($saved){
+            Mail::to('user@test.it')->send(new NewPost());
+
             return redirect()->route('admin.posts.show', $newPost->id);
         }
     }
@@ -93,6 +102,15 @@ class PostController extends Controller
         
         $data['slug'] = Str::slug($data[ 'title' ], '-');
 
+        if(!empty($data['path_img'])){
+
+            if(!empty($post->path_img)){
+                Storage::disk('public')->delete($post->path_img);
+            }
+
+            $data[ 'path_img' ] = Storage::disk('public')->put('images', $data['path_img']);
+        }
+
         $update = $post->update($data);
 
         if ($update){
@@ -119,6 +137,7 @@ class PostController extends Controller
         return [
             'title' => 'required',
             'body' => 'required',
+            'path_img' => 'image'
         ];
     }
 }
